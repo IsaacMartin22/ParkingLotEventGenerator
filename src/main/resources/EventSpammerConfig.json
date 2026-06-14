@@ -1,0 +1,45 @@
+{
+  "baseUrl": "http://localhost:8080/api",
+  "continuous": true,
+  "totalRequests": 100,
+  "delayMillis": 500,
+  "requestTimeoutSeconds": 10,
+  "defaultHeaders": {
+    "Content-Type": "application/json",
+    "Accept": "application/json"
+  },
+  "requests": [
+    {
+      "name": "create-event",
+      "method": "POST",
+      "path": "/events",
+      "enabled": true,
+      "weight": 5,
+      "body": {
+        "name": "Generated Event",
+        "description": "Created by EventSpammer",
+        "status": "ACTIVE"
+      }
+    },
+    {
+      "name": "update-event",
+      "method": "PUT",
+      "path": "/events/1",
+      "enabled": true,
+      "weight": 3,
+      "body": {
+        "name": "Updated Generated Event",
+        "description": "Updated by EventSpammer",
+        "status": "UPDATED"
+      }
+    },
+    {
+      "name": "delete-event",
+      "method": "DELETE",
+      "path": "/events/1",
+      "enabled": true,
+      "weight": 1,
+      "body": null
+    }
+  ]
+}

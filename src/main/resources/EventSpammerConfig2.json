@@ -1,0 +1,70 @@
+
+---
+
+## How it works
+
+The app loads `config.json`, filters enabled requests, and repeatedly chooses one request using its configured `weight`.
+
+For example:
+
+```json
+{
+  "name": "create-event",
+  "method": "POST",
+  "path": "/events",
+  "enabled": true,
+  "weight": 5
+}
+```
+
+A request with `weight: 5` is five times more likely to be selected than a request with `weight: 1`.
+
+---
+
+## Example: run only 25 requests
+
+Change this:
+
+```json
+{
+  "continuous": false,
+  "totalRequests": 25
+}
+```
+
+Then run:
+
+```bash
+java -jar target/event-spammer-1.0.0.jar
+```
+
+---
+
+## Example: add authentication
+
+Add an `Authorization` header:
+
+```json
+{
+  "defaultHeaders": {
+    "Content-Type": "application/json",
+    "Accept": "application/json",
+    "Authorization": "Bearer YOUR_TOKEN_HERE"
+  }
+}
+```
+
+---
+
+## Next useful enhancements
+
+You may eventually want to add:
+
+- Dynamic IDs captured from create responses
+- Variable interpolation in request bodies
+- Parallel request workers
+- Per-request rate limits
+- Scenario-based request sequences
+- Metrics export
+- Retry/backoff configuration
+- Request/response logging to files
