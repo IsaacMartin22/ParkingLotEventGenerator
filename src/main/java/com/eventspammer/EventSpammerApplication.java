@@ -4,17 +4,12 @@ import com.eventspammer.config.AppConfig;
 import com.eventspammer.core.EventSpammer;
 import com.eventspammer.http.ApiClient;
 import com.eventspammer.rabbitmq.RabbitMqEventPublisher;
-import com.eventspammer.util.JsonFileLoader;
-
-import java.nio.file.Path;
 
 public class EventSpammerApplication {
 
     public static void main(String[] args) {
-        String configPath = args.length > 0 ? args[0] : "src/main/resources/EventSpammerConfig.json";
-
         try {
-            AppConfig config = JsonFileLoader.load(Path.of(configPath), AppConfig.class);
+            AppConfig config = new AppConfig();
             ApiClient apiClient = new ApiClient(config);
 
             try (RabbitMqEventPublisher eventPublisher = new RabbitMqEventPublisher(config.getRabbitMq())) {

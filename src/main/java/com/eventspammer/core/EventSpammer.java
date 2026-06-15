@@ -25,8 +25,6 @@ public class EventSpammer {
     }
 
     public void start() throws InterruptedException {
-        config.validate();
-
         List<RequestDefinition> enabledRequests = config.getRequests()
                 .stream()
                 .filter(RequestDefinition::isEnabled)
