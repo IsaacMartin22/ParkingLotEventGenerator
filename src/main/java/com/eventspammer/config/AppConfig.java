@@ -2,6 +2,7 @@ package com.eventspammer.config;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import java.util.List;
 import java.util.Map;
@@ -27,8 +28,14 @@ public class AppConfig {
     );
     private static final List<String> CAR_MAKES = CAR_MAKES_AND_MODELS.keySet().stream().toList();
 
-    private static final int UPPER_SPACE_RAND = 10;
-    private static final int UPPER_SECTION_RAND = 1;
+
+    // These constraints are used to target the parking spaces in the first floor of
+    // the first lot, I pick those sections to demonstrate the live updates of a SSE on
+    // the frontend, which can narrow down to show visuals of specific floors.
+    //
+    // True random parking lot simulation would obviously affect all floors/sections/spaces
+    private static final int UPPER_SPACE_RAND = 60;
+    private static final int UPPER_SECTION_RAND = 6;
 
     private final String apiRenderUrl;
     private final String frontendRenderUrl;
@@ -61,8 +68,9 @@ public class AppConfig {
         this.rabbitMq = createRabbitMqConfig();
 
         this.requests = List.of(
-//                createPostEventRequest(),
-                createPutEventRequest()
+                createCarRequest(),
+                createPutEventRequest(),
+                createClearSpaceRequest()
         );
 
         validate();
@@ -105,11 +113,20 @@ public class AppConfig {
             return;
         }
 
-        switch (request.getName()) {
-//            case "post-event" -> request.setBody(createPostEventBody());
-            case "put-event" -> request.setBody(createPutEventBody());
-            default -> {
-            }
+        if (request.getName().equals("post-car")) {
+            request.setBody(createCarBody());
+            return;
+        }
+
+        if (request.getName().equals("put-event")) {
+            request.setPath("/spaces/" + randomSpaceNumber());
+            request.setBody(createPutEventBody());
+            return;
+        }
+
+        if (request.getName().equals("put-event-null-car")) {
+            request.setPath("/spaces/" + randomSpaceNumber());
+            request.setBody(createPutEventNullCarBody());
         }
     }
 
@@ -167,15 +184,15 @@ public class AppConfig {
         return Boolean.parseBoolean(value);
     }
 
-    private RequestDefinition createPostEventRequest() {
+    private RequestDefinition createCarRequest() {
         RequestDefinition request = new RequestDefinition();
 
-        request.setName("post-event");
+        request.setName("post-car");
         request.setMethod(RequestMethod.POST);
-        request.setPath("/spaces");
+        request.setPath("/cars");
         request.setEnabled(true);
-        request.setWeight(3);
-        request.setBody(createPostEventBody());
+        request.setWeight(1);
+        request.setBody(createCarBody());
 
         return request;
     }
@@ -185,48 +202,53 @@ public class AppConfig {
 
         request.setName("put-event");
         request.setMethod(RequestMethod.PUT);
-        request.setPath("/spaces/" + 1);
+        request.setPath("/spaces/" + randomSpaceNumber());
         request.setEnabled(true);
-        request.setWeight(3);
+        request.setWeight(5);
         request.setBody(createPutEventBody());
 
         return request;
     }
 
-    private JsonNode createPostEventBody() {
+    private RequestDefinition createClearSpaceRequest() {
+        RequestDefinition request = new RequestDefinition();
+
+        request.setName("put-event-null-car");
+        request.setMethod(RequestMethod.PUT);
+        request.setPath("/spaces/" + randomSpaceNumber());
+        request.setEnabled(true);
+        request.setWeight(1);
+        request.setBody(createPutEventNullCarBody());
+
+        return request;
+    }
+
+    private JsonNode createCarBody() {
         CarSpec carSpec = randomCarSpec();
 
         return OBJECT_MAPPER.valueToTree(Map.of(
-                "occupied", true,
-                "section", Map.of(
-                        "id", randomSectionId()
-                ),
-                "car", Map.of(
-                        "color", carSpec.color(),
-                        "licensePlate", randomLicensePlate(),
-                        "make", carSpec.make(),
-                        "model", carSpec.model(),
-                        "manufacturingYear", ThreadLocalRandom.current().nextInt(1990, 2024)
-                )
+                "color", carSpec.color(),
+                "licensePlate", randomLicensePlate(),
+                "make", carSpec.make(),
+                "model", carSpec.model(),
+                "manufacturingYear", ThreadLocalRandom.current().nextInt(1990, 2024)
         ));
     }
 
     private JsonNode createPutEventBody() {
-        CarSpec carSpec = randomCarSpec();
+        ObjectNode body = OBJECT_MAPPER.createObjectNode();
+        body.put("occupied", true);
+        body.set("section", OBJECT_MAPPER.valueToTree(Map.of("id", randomSectionId())));
+        body.set("car", createCarBody());
+        return body;
+    }
 
-        return OBJECT_MAPPER.valueToTree(Map.of(
-                "occupied", true,
-                "section", Map.of(
-                        "id", 1
-                ),
-                "car", Map.of(
-                        "color", carSpec.color(),
-                        "licensePlate", randomLicensePlate(),
-                        "make", carSpec.make(),
-                        "model", carSpec.model(),
-                        "manufacturingYear", ThreadLocalRandom.current().nextInt(1990, 2024)
-                )
-        ));
+    private JsonNode createPutEventNullCarBody() {
+        ObjectNode body = OBJECT_MAPPER.createObjectNode();
+        body.put("occupied", false);
+        body.set("section", OBJECT_MAPPER.valueToTree(Map.of("id", randomSectionId())));
+        body.putNull("car");
+        return body;
     }
 
     private CarSpec randomCarSpec() {
@@ -246,7 +268,7 @@ public class AppConfig {
     }
 
     private int randomSectionId() {
-        return ThreadLocalRandom.current().nextInt(1, UPPER_SECTION_RAND);
+        return ThreadLocalRandom.current().nextInt(1, UPPER_SECTION_RAND + 1);
     }
 
     private String randomLicensePlate() {
