@@ -41,7 +41,7 @@ public class RabbitMqEventPublisher implements AutoCloseable {
         System.out.println("RabbitMQ queue: " + config.getQueueName());
     }
 
-    public void publish(EventSpamMessage message) {
+    public synchronized void publish(EventSpamMessage message) {
         if (!config.isEnabled()) {
             return;
         }

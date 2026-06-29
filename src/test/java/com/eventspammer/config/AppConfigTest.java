@@ -15,6 +15,8 @@ class AppConfigTest {
 
         assertEquals("https://api-service-i1ms.onrender.com/api", config.getBaseUrl());
         assertEquals(5, config.getRequestTimeoutSeconds());
+        assertEquals(30_000, config.getFixedGetIntervalMillis());
+        assertEquals(2, config.getFixedGetUrls().size());
         assertFalse(config.getRequests().isEmpty());
         assertNotNull(config.getRabbitMq());
         assertEquals("event-spam-events", config.getRabbitMq().getQueueName());

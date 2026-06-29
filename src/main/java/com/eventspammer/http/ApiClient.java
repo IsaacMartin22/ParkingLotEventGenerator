@@ -53,6 +53,24 @@ public class ApiClient {
         );
     }
 
+    public ApiResponse sendGet(String absoluteUrl) throws Exception {
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(absoluteUrl))
+                .timeout(Duration.ofSeconds(config.getRequestTimeoutSeconds()))
+                .GET()
+                .build();
+
+        Instant startedAt = Instant.now();
+        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+        long durationMillis = Duration.between(startedAt, Instant.now()).toMillis();
+
+        return new ApiResponse(
+                response.statusCode(),
+                response.body() == null ? "" : response.body(),
+                durationMillis
+        );
+    }
+
     private void applyHeaders(HttpRequest.Builder requestBuilder, RequestDefinition requestDefinition) {
         Map<String, String> mergedHeaders = new LinkedHashMap<>();
 

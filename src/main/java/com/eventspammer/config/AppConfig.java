@@ -30,20 +30,27 @@ public class AppConfig {
     private static final int UPPER_SPACE_RAND = 10;
     private static final int UPPER_SECTION_RAND = 1;
 
+    private final String apiRenderUrl;
+    private final String frontendRenderUrl;
     private final String baseUrl;
-    private final boolean continuous;
-    private final int totalRequests;
     private final long delayMillis;
+    private final long fixedGetIntervalMillis;
+    private final List<String> fixedGetUrls;
     private final int requestTimeoutSeconds;
     private final Map<String, String> defaultHeaders;
     private final List<RequestDefinition> requests;
     private final RabbitMqConfig rabbitMq;
 
     public AppConfig() {
-        this.baseUrl = "https://api-service-i1ms.onrender.com/api";
-        this.continuous = true;
-        this.totalRequests = 1_000_000;
+        this.frontendRenderUrl = "https://parkinglotfrontend.onrender.com/";
+        this.apiRenderUrl = "https://api-service-i1ms.onrender.com";
+        this.baseUrl = apiRenderUrl + "/api";
         this.delayMillis =  3 * 1000; // 3 Seconds
+        this.fixedGetIntervalMillis = 30 * 1000; // 30 Seconds
+        this.fixedGetUrls = List.of(
+                frontendRenderUrl,
+                apiRenderUrl
+        );
         this.requestTimeoutSeconds = 5;
 
         this.defaultHeaders = Map.of(
@@ -65,16 +72,16 @@ public class AppConfig {
         return baseUrl;
     }
 
-    public boolean isContinuous() {
-        return continuous;
-    }
-
-    public int getTotalRequests() {
-        return totalRequests;
-    }
-
     public long getDelayMillis() {
         return delayMillis;
+    }
+
+    public long getFixedGetIntervalMillis() {
+        return fixedGetIntervalMillis;
+    }
+
+    public List<String> getFixedGetUrls() {
+        return fixedGetUrls;
     }
 
     public int getRequestTimeoutSeconds() {
@@ -225,9 +232,20 @@ public class AppConfig {
             throw new IllegalArgumentException("delayMillis must be >= 0.");
         }
 
-        if (!continuous && totalRequests <= 0) {
-            throw new IllegalArgumentException("totalRequests must be > 0 when continuous is false.");
+        if (fixedGetIntervalMillis <= 0) {
+            throw new IllegalArgumentException("fixedGetIntervalMillis must be > 0.");
         }
+
+        if (fixedGetUrls == null || fixedGetUrls.size() != 2) {
+            throw new IllegalArgumentException("Exactly two fixed GET URLs are required.");
+        }
+
+        for (String fixedGetUrl : fixedGetUrls) {
+            if (fixedGetUrl == null || fixedGetUrl.isBlank()) {
+                throw new IllegalArgumentException("Fixed GET URLs must be non-blank.");
+            }
+        }
+
 
         if (requestTimeoutSeconds <= 0) {
             throw new IllegalArgumentException("requestTimeoutSeconds must be > 0.");
