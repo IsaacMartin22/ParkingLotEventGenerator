@@ -68,16 +68,24 @@ class RequestDefinitionTest {
     }
 
     @Test
-    void validateRejectsNonPositiveWeight() {
+    void validateAllowsZeroWeight() {
         RequestDefinition request = validRequestDefinition();
         request.setWeight(0);
+
+        assertDoesNotThrow(request::validate);
+    }
+
+    @Test
+    void validateRejectsNegativeWeight() {
+        RequestDefinition request = validRequestDefinition();
+        request.setWeight(-1);
 
         IllegalArgumentException exception = assertThrows(
                 IllegalArgumentException.class,
                 request::validate
         );
 
-        assertEquals("Request weight must be > 0 for request: test-request", exception.getMessage());
+        assertEquals("Request weight must be >= 0 for request: test-request", exception.getMessage());
     }
 
     private RequestDefinition validRequestDefinition() {

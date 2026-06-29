@@ -36,8 +36,8 @@ public class RequestDefinition {
             throw new IllegalArgumentException("Request path must start with '/' for request: " + name);
         }
 
-        if (weight <= 0) {
-            throw new IllegalArgumentException("Request weight must be > 0 for request: " + name);
+        if (weight < 0) {
+            throw new IllegalArgumentException("Request weight must be >= 0 for request: " + name);
         }
     }
 }

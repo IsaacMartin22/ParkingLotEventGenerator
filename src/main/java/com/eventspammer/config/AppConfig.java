@@ -191,7 +191,8 @@ public class AppConfig {
         request.setMethod(RequestMethod.POST);
         request.setPath("/cars");
         request.setEnabled(true);
-        request.setWeight(1);
+        // Prod already has over 400 cars, no need to make more for now
+        request.setWeight(0);
         request.setBody(createCarBody());
 
         return request;
@@ -260,11 +261,8 @@ public class AppConfig {
         return new CarSpec(color, make, model);
     }
 
-    private String randomSpaceNumber() {
-        char letter = (char) ThreadLocalRandom.current().nextInt('A', 'Z' + 1);
-        int number = ThreadLocalRandom.current().nextInt(1, UPPER_SPACE_RAND);
-
-        return "%c-%03d".formatted(letter, number);
+    private int randomSpaceNumber() {
+        return ThreadLocalRandom.current().nextInt(0, UPPER_SPACE_RAND);
     }
 
     private int randomSectionId() {
