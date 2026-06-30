@@ -2,7 +2,7 @@ package com.eventspammer;
 
 import com.eventspammer.config.AppConfig;
 import com.eventspammer.core.EventSpammer;
-import com.eventspammer.http.ApiClient;
+import com.eventspammer.core.SDKFiles;
 import com.eventspammer.rabbitmq.RabbitMqEventPublisher;
 
 public class EventSpammerApplication {
@@ -10,12 +10,12 @@ public class EventSpammerApplication {
     public static void main(String[] args) {
         try {
             AppConfig config = new AppConfig();
-            ApiClient apiClient = new ApiClient(config);
+            SDKFiles sdkFiles = new SDKFiles(config);
 
             try (RabbitMqEventPublisher eventPublisher = new RabbitMqEventPublisher(config.getRabbitMq())) {
                 eventPublisher.start();
 
-                EventSpammer spammer = new EventSpammer(config, apiClient, eventPublisher);
+                EventSpammer spammer = new EventSpammer(config, sdkFiles, eventPublisher);
 
                 Runtime.getRuntime().addShutdownHook(new Thread(() -> {
                     System.out.println();
