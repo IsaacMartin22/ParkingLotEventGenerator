@@ -36,6 +36,15 @@ Update these values before running:
 - `fixedGetIntervalMillis`: interval for fixed GET scheduler (default `30000`).
 - `rabbitMq`: host/port credentials or a broker URL, plus queue settings.
 
+Default weighted requests in `AppConfig` now target:
+
+- `POST /api/cars`
+  - body keys: `color`, `make`, `model`, `manufacturingYear`, `licensePlate`, `parkingSpaceId`
+- `PUT /api/cars/{id}`
+  - body keys: `color`, `licensePlate`
+- `PUT /api/spaces/{id}`
+  - body keys: `number`, `clearCar`
+
 RabbitMQ can now be configured via environment variables (useful for deployments):
 
 - `RABBITMQ_URI`: full `amqp://` or `amqps://` connection URL from your provider.

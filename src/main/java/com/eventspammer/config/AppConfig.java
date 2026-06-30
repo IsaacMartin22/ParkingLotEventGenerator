@@ -2,7 +2,6 @@ package com.eventspammer.config;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import java.util.List;
 import java.util.Map;
@@ -29,13 +28,10 @@ public class AppConfig {
     private static final List<String> CAR_MAKES = CAR_MAKES_AND_MODELS.keySet().stream().toList();
 
 
-    // These constraints are used to target the parking spaces in the first floor of
-    // the first lot, I pick those sections to demonstrate the live updates of a SSE on
-    // the frontend, which can narrow down to show visuals of specific floors.
-    //
-    // True random parking lot simulation would obviously affect all floors/sections/spaces
-    private static final int UPPER_SPACE_RAND = 60;
-    private static final int UPPER_SECTION_RAND = 6;
+    // These ranges keep generated IDs in a realistic seed-data range for existing cars/spaces.
+    private static final int UPPER_SPACE_ID_RAND = 60;
+    private static final int UPPER_CAR_ID_RAND = 500;
+    private static final int UPPER_SPACE_NUMBER_RAND = 99;
 
     private final String apiRenderUrl;
     private final String frontendRenderUrl;
@@ -69,7 +65,7 @@ public class AppConfig {
 
         this.requests = List.of(
                 createCarRequest(),
-                createPutEventRequest(),
+                createPutCarRequest(),
                 createClearSpaceRequest()
         );
 
@@ -114,19 +110,19 @@ public class AppConfig {
         }
 
         if (request.getName().equals("post-car")) {
-            request.setBody(createCarBody());
+            request.setBody(createPostCarBody());
             return;
         }
 
-        if (request.getName().equals("put-event")) {
-            request.setPath("/spaces/" + randomSpaceNumber());
-            request.setBody(createPutEventBody());
+        if (request.getName().equals("put-car")) {
+            request.setPath("/cars/" + randomCarId());
+            request.setBody(createPutCarBody());
             return;
         }
 
-        if (request.getName().equals("put-event-null-car")) {
-            request.setPath("/spaces/" + randomSpaceNumber());
-            request.setBody(createPutEventNullCarBody());
+        if (request.getName().equals("put-space-clear-car")) {
+            request.setPath("/spaces/" + randomSpaceId());
+            request.setBody(createPutSpaceClearCarBody());
         }
     }
 
@@ -193,20 +189,20 @@ public class AppConfig {
         request.setEnabled(true);
         // Prod already has over 400 cars, no need to make more for now
         request.setWeight(0);
-        request.setBody(createCarBody());
+        request.setBody(createPostCarBody());
 
         return request;
     }
 
-    private RequestDefinition createPutEventRequest() {
+    private RequestDefinition createPutCarRequest() {
         RequestDefinition request = new RequestDefinition();
 
-        request.setName("put-event");
+        request.setName("put-car");
         request.setMethod(RequestMethod.PUT);
-        request.setPath("/spaces/" + randomSpaceNumber());
+        request.setPath("/cars/" + randomCarId());
         request.setEnabled(true);
         request.setWeight(5);
-        request.setBody(createPutEventBody());
+        request.setBody(createPutCarBody());
 
         return request;
     }
@@ -214,17 +210,17 @@ public class AppConfig {
     private RequestDefinition createClearSpaceRequest() {
         RequestDefinition request = new RequestDefinition();
 
-        request.setName("put-event-null-car");
+        request.setName("put-space-clear-car");
         request.setMethod(RequestMethod.PUT);
-        request.setPath("/spaces/" + randomSpaceNumber());
+        request.setPath("/spaces/" + randomSpaceId());
         request.setEnabled(true);
         request.setWeight(1);
-        request.setBody(createPutEventNullCarBody());
+        request.setBody(createPutSpaceClearCarBody());
 
         return request;
     }
 
-    private JsonNode createCarBody() {
+    private JsonNode createPostCarBody() {
         CarSpec carSpec = randomCarSpec();
 
         return OBJECT_MAPPER.valueToTree(Map.of(
@@ -232,24 +228,25 @@ public class AppConfig {
                 "licensePlate", randomLicensePlate(),
                 "make", carSpec.make(),
                 "model", carSpec.model(),
-                "manufacturingYear", ThreadLocalRandom.current().nextInt(1990, 2024)
+                "manufacturingYear", ThreadLocalRandom.current().nextInt(1990, 2024),
+                "parkingSpaceId", randomSpaceId()
         ));
     }
 
-    private JsonNode createPutEventBody() {
-        ObjectNode body = OBJECT_MAPPER.createObjectNode();
-        body.put("occupied", true);
-        body.set("section", OBJECT_MAPPER.valueToTree(Map.of("id", randomSectionId())));
-        body.set("car", createCarBody());
-        return body;
+    private JsonNode createPutCarBody() {
+        CarSpec carSpec = randomCarSpec();
+
+        return OBJECT_MAPPER.valueToTree(Map.of(
+                "color", carSpec.color(),
+                "licensePlate", randomLicensePlate()
+        ));
     }
 
-    private JsonNode createPutEventNullCarBody() {
-        ObjectNode body = OBJECT_MAPPER.createObjectNode();
-        body.put("occupied", false);
-        body.set("section", OBJECT_MAPPER.valueToTree(Map.of("id", randomSectionId())));
-        body.putNull("car");
-        return body;
+    private JsonNode createPutSpaceClearCarBody() {
+        return OBJECT_MAPPER.valueToTree(Map.of(
+                "number", randomSpaceNumber(),
+                "clearCar", true
+        ));
     }
 
     private CarSpec randomCarSpec() {
@@ -261,16 +258,23 @@ public class AppConfig {
         return new CarSpec(color, make, model);
     }
 
-    private int randomSpaceNumber() {
-        return ThreadLocalRandom.current().nextInt(0, UPPER_SPACE_RAND);
+    private int randomSpaceId() {
+        return ThreadLocalRandom.current().nextInt(1, UPPER_SPACE_ID_RAND + 1);
     }
 
-    private int randomSectionId() {
-        return ThreadLocalRandom.current().nextInt(1, UPPER_SECTION_RAND + 1);
+    private int randomCarId() {
+        return ThreadLocalRandom.current().nextInt(1, UPPER_CAR_ID_RAND + 1);
+    }
+
+    private String randomSpaceNumber() {
+        char letter = (char) ThreadLocalRandom.current().nextInt('A', 'Z' + 1);
+        int number = ThreadLocalRandom.current().nextInt(1, UPPER_SPACE_NUMBER_RAND + 1);
+
+        return "%c-%02d".formatted(letter, number);
     }
 
     private String randomLicensePlate() {
-        return "%s-%03d".formatted(randomLetters(3), ThreadLocalRandom.current().nextInt(100, 1000));
+        return "%s-%04d".formatted(randomLetters(3), ThreadLocalRandom.current().nextInt(1000, 10_000));
     }
 
     private String randomLetters(int length) {

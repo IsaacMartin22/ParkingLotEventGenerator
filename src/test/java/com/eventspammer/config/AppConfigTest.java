@@ -31,15 +31,15 @@ class AppConfigTest {
                 .collect(java.util.stream.Collectors.toSet());
 
         assertTrue(requestNames.contains("post-car"));
-        assertTrue(requestNames.contains("put-event"));
-        assertTrue(requestNames.contains("put-event-null-car"));
+        assertTrue(requestNames.contains("put-car"));
+        assertTrue(requestNames.contains("put-space-clear-car"));
     }
 
     @Test
-    void refreshRandomizedBodyUpdatesPutEventBody() {
+    void refreshRandomizedBodyUpdatesPutCarBody() {
         AppConfig config = new AppConfig();
         RequestDefinition request = config.getRequests().stream()
-                .filter(candidate -> "put-event".equals(candidate.getName()))
+                .filter(candidate -> "put-car".equals(candidate.getName()))
                 .findFirst()
                 .orElseThrow();
 
@@ -48,19 +48,17 @@ class AppConfigTest {
         JsonNode body = request.getBody();
 
         assertNotNull(body);
-        assertTrue(body.get("occupied").asBoolean());
-        assertTrue(body.get("section").get("id").asInt() >= 1);
-        assertNotNull(body.get("car").get("color").asText());
-        assertNotNull(body.get("car").get("licensePlate").asText());
-        assertNotNull(body.get("car").get("make").asText());
-        assertNotNull(body.get("car").get("model").asText());
+        assertTrue(request.getPath().startsWith("/cars/"));
+        assertNotNull(body.get("color").asText());
+        assertNotNull(body.get("licensePlate").asText());
+        assertTrue(body.get("licensePlate").asText().matches("^[A-Z]{3}-\\d{4}$"));
     }
 
     @Test
-    void refreshRandomizedBodyUpdatesPutEventNullCarBody() {
+    void refreshRandomizedBodyUpdatesPutSpaceClearCarBody() {
         AppConfig config = new AppConfig();
         RequestDefinition request = config.getRequests().stream()
-                .filter(candidate -> "put-event-null-car".equals(candidate.getName()))
+                .filter(candidate -> "put-space-clear-car".equals(candidate.getName()))
                 .findFirst()
                 .orElseThrow();
 
@@ -69,9 +67,10 @@ class AppConfigTest {
         JsonNode body = request.getBody();
 
         assertNotNull(body);
-        assertFalse(body.get("occupied").asBoolean());
-        assertTrue(body.get("section").get("id").asInt() >= 1);
-        assertTrue(body.get("car").isNull());
+        assertTrue(request.getPath().startsWith("/spaces/"));
+        assertNotNull(body.get("number").asText());
+        assertTrue(body.get("number").asText().matches("^[A-Z]-\\d{2}$"));
+        assertTrue(body.get("clearCar").asBoolean());
     }
 
     @Test
@@ -92,6 +91,7 @@ class AppConfigTest {
         assertNotNull(body.get("make").asText());
         assertNotNull(body.get("model").asText());
         assertTrue(body.get("manufacturingYear").asInt() >= 1990);
+        assertTrue(body.get("parkingSpaceId").asInt() >= 1);
         assertNotEquals(oldBody, body);
     }
 }
