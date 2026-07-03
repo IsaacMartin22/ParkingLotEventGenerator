@@ -1,17 +1,18 @@
 package com.eventspammer.config;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.example.parkinglot.sdk.model.GenerationRequests;
+import lombok.Data;
+import lombok.extern.slf4j.Slf4j;
 
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ThreadLocalRandom;
 
+@Slf4j
+@Data
 public class AppConfig {
-
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
-    private static final List<String> CAR_COLORS = List.of("Red", "Blue", "Black", "White", "Silver", "Green");
-    private static final Map<String, List<String>> CAR_MAKES_AND_MODELS = Map.ofEntries(
+    public static volatile List<String> CAR_COLORS = List.of("Red", "Blue", "Black", "White", "Silver", "Green");
+    public static volatile Map<String, List<String>> CAR_MAKES_AND_MODELS = Map.ofEntries(
             Map.entry("Toyota", List.of("Corolla", "Camry", "RAV4", "Prius")),
             Map.entry("Honda", List.of("Civic", "Accord", "CR-V", "Pilot")),
             Map.entry("Ford", List.of("F-150", "Escape", "Explorer", "Mustang")),
@@ -25,35 +26,25 @@ public class AppConfig {
             Map.entry("BMW", List.of("3 Series", "5 Series", "X3", "X5")),
             Map.entry("Mercedes-Benz", List.of("C-Class", "E-Class", "GLC", "GLE"))
     );
-    private static final List<String> CAR_MAKES = CAR_MAKES_AND_MODELS.keySet().stream().toList();
+    public static volatile List<String> CAR_MAKES = CAR_MAKES_AND_MODELS.keySet().stream().toList();
+
+    private final String baseUrl;
+    private final Map<String, String> defaultHeaders;
+
 
 
     // These ranges keep generated IDs in a realistic seed-data range for existing cars/spaces.
-    private static final int UPPER_SPACE_ID_RAND = 60;
-    private static final int UPPER_CAR_ID_RAND = 500;
-    private static final int UPPER_SPACE_NUMBER_RAND = 99;
-
-    private final String apiRenderUrl;
-    private final String frontendRenderUrl;
-    private final String baseUrl;
-    private final long delayMillis;
-    private final long fixedGetIntervalMillis;
-    private final List<String> fixedGetUrls;
-    private final int requestTimeoutSeconds;
-    private final Map<String, String> defaultHeaders;
-    private final List<RequestDefinition> requests;
-    private final RabbitMqConfig rabbitMq;
+    private volatile int upperSpaceIdRand = 60;
+    private volatile int upperCarIdRand = 500;
+    private volatile int upperSpaceNumberRand = 99;
+    private volatile Map<GenerationRequests, Integer> requestWeightMap;
+    private volatile Map<GenerationRequests, Boolean> requestEnabledMap;
+    private volatile long delayMillis;
+    private volatile int requestTimeoutSeconds;
 
     public AppConfig() {
-        this.frontendRenderUrl = "https://parkinglotfrontend.onrender.com/";
-        this.apiRenderUrl = "https://api-service-i1ms.onrender.com";
-        this.baseUrl = apiRenderUrl + "/api";
+        this.baseUrl = "https://api-service-i1ms.onrender.com/api";
         this.delayMillis =  3 * 1000; // 3 Seconds
-        this.fixedGetIntervalMillis = 30 * 1000; // 30 Seconds
-        this.fixedGetUrls = List.of(
-                frontendRenderUrl,
-                apiRenderUrl
-        );
         this.requestTimeoutSeconds = 5;
 
         this.defaultHeaders = Map.of(
@@ -61,276 +52,219 @@ public class AppConfig {
                 "Accept", "application/json"
         );
 
-        this.rabbitMq = createRabbitMqConfig();
+        this.requestWeightMap = Map.of(
+                GenerationRequests.PARKING_SPACE_DELETE, 1,
+                GenerationRequests.PARKING_SPACE_UPDATE, 1
+        );
 
-        this.requests = List.of(
-                createCarRequest(),
-                createPutCarRequest(),
-                createClearSpaceRequest()
+        this.requestEnabledMap = Map.of(
+                GenerationRequests.PARKING_SPACE_DELETE, true,
+                GenerationRequests.PARKING_SPACE_UPDATE, true
         );
 
         validate();
     }
 
-    public String getBaseUrl() {
-        return baseUrl;
+    public synchronized AppConfigSnapshot snapshot() {
+        Map<String, String> headers = defaultHeaders == null ? Map.of() : new LinkedHashMap<>(defaultHeaders);
+        Map<GenerationRequests, Integer> weights = requestWeightMap == null ? Map.of() : new LinkedHashMap<>(requestWeightMap);
+        Map<GenerationRequests, Boolean> enabled = requestEnabledMap == null ? Map.of() : new LinkedHashMap<>(requestEnabledMap);
+
+        return new AppConfigSnapshot(
+                baseUrl,
+                headers,
+                List.copyOf(CAR_COLORS),
+                copyCarMakesAndModels(CAR_MAKES_AND_MODELS),
+                List.copyOf(CAR_MAKES),
+                upperSpaceIdRand,
+                upperCarIdRand,
+                upperSpaceNumberRand,
+                weights,
+                enabled,
+                delayMillis,
+                requestTimeoutSeconds,
+                getTotalWeight()
+        );
     }
 
-    public long getDelayMillis() {
-        return delayMillis;
-    }
-
-    public long getFixedGetIntervalMillis() {
-        return fixedGetIntervalMillis;
-    }
-
-    public List<String> getFixedGetUrls() {
-        return fixedGetUrls;
-    }
-
-    public int getRequestTimeoutSeconds() {
-        return requestTimeoutSeconds;
-    }
-
-    public Map<String, String> getDefaultHeaders() {
-        return defaultHeaders;
-    }
-
-    public List<RequestDefinition> getRequests() {
-        return requests;
-    }
-
-    public RabbitMqConfig getRabbitMq() {
-        return rabbitMq;
-    }
-
-    public void refreshRandomizedBody(RequestDefinition request) {
-        if (request == null || request.getName() == null) {
+    public synchronized void applyUpdate(AppConfigUpdateRequest update) {
+        if (update == null) {
             return;
         }
 
-        if (request.getName().equals("post-car")) {
-            request.setBody(createPostCarBody());
-            return;
-        }
-
-        if (request.getName().equals("put-car")) {
-            request.setPath("/cars/" + randomCarId());
-            request.setBody(createPutCarBody());
-            return;
-        }
-
-        if (request.getName().equals("put-space-clear-car")) {
-            request.setPath("/spaces/" + randomSpaceId());
-            request.setBody(createPutSpaceClearCarBody());
-        }
-    }
-
-    private RabbitMqConfig createRabbitMqConfig() {
-        RabbitMqConfig rabbitMqConfig = new RabbitMqConfig();
-
-        String rabbitMqUri = readTrimmedEnv("RABBITMQ_URI", null);
-        boolean enabledByDefault = rabbitMqUri != null;
-
-        rabbitMqConfig.setEnabled(readBooleanEnv("RABBITMQ_ENABLED", enabledByDefault));
-        rabbitMqConfig.setUri(rabbitMqUri);
-        rabbitMqConfig.setHost(readTrimmedEnv("RABBITMQ_HOST", "localhost"));
-        rabbitMqConfig.setPort(readIntEnv("RABBITMQ_PORT", 5672));
-        rabbitMqConfig.setUsername(readTrimmedEnv("RABBITMQ_USERNAME", "guest"));
-        rabbitMqConfig.setPassword(readRawEnv("RABBITMQ_PASSWORD", "guest"));
-        rabbitMqConfig.setQueueName(readTrimmedEnv("RABBITMQ_QUEUE", "event-spam-events"));
-
-        return rabbitMqConfig;
-    }
-
-    private String readTrimmedEnv(String key, String defaultValue) {
-        String value = System.getenv(key);
-        if (value == null) {
-            return defaultValue;
-        }
-
-        String trimmed = value.trim();
-        return trimmed.isEmpty() ? defaultValue : trimmed;
-    }
-
-    private String readRawEnv(String key, String defaultValue) {
-        String value = System.getenv(key);
-        return value == null ? defaultValue : value;
-    }
-
-    private int readIntEnv(String key, int defaultValue) {
-        String value = readTrimmedEnv(key, null);
-        if (value == null) {
-            return defaultValue;
-        }
+        List<String> previousCarColors = CAR_COLORS;
+        Map<String, List<String>> previousCarMakesAndModels = CAR_MAKES_AND_MODELS;
+        List<String> previousCarMakes = CAR_MAKES;
+        int previousUpperSpaceIdRand = upperSpaceIdRand;
+        int previousUpperCarIdRand = upperCarIdRand;
+        int previousUpperSpaceNumberRand = upperSpaceNumberRand;
+        Map<GenerationRequests, Integer> previousRequestWeightMap = requestWeightMap;
+        Map<GenerationRequests, Boolean> previousRequestEnabledMap = requestEnabledMap;
+        long previousDelayMillis = delayMillis;
+        int previousRequestTimeoutSeconds = requestTimeoutSeconds;
 
         try {
-            return Integer.parseInt(value);
-        } catch (NumberFormatException ignored) {
-            return defaultValue;
-        }
-    }
-
-    private boolean readBooleanEnv(String key, boolean defaultValue) {
-        String value = readTrimmedEnv(key, null);
-        if (value == null) {
-            return defaultValue;
-        }
-
-        return Boolean.parseBoolean(value);
-    }
-
-    private RequestDefinition createCarRequest() {
-        RequestDefinition request = new RequestDefinition();
-
-        request.setName("post-car");
-        request.setMethod(RequestMethod.POST);
-        request.setPath("/cars");
-        request.setEnabled(true);
-        // Prod already has over 400 cars, no need to make more for now
-        request.setWeight(0);
-        request.setBody(createPostCarBody());
-
-        return request;
-    }
-
-    private RequestDefinition createPutCarRequest() {
-        RequestDefinition request = new RequestDefinition();
-
-        request.setName("put-car");
-        request.setMethod(RequestMethod.PUT);
-        request.setPath("/cars/" + randomCarId());
-        request.setEnabled(true);
-        request.setWeight(5);
-        request.setBody(createPutCarBody());
-
-        return request;
-    }
-
-    private RequestDefinition createClearSpaceRequest() {
-        RequestDefinition request = new RequestDefinition();
-
-        request.setName("put-space-clear-car");
-        request.setMethod(RequestMethod.PUT);
-        request.setPath("/spaces/" + randomSpaceId());
-        request.setEnabled(true);
-        request.setWeight(1);
-        request.setBody(createPutSpaceClearCarBody());
-
-        return request;
-    }
-
-    private JsonNode createPostCarBody() {
-        CarSpec carSpec = randomCarSpec();
-
-        return OBJECT_MAPPER.valueToTree(Map.of(
-                "color", carSpec.color(),
-                "licensePlate", randomLicensePlate(),
-                "make", carSpec.make(),
-                "model", carSpec.model(),
-                "manufacturingYear", ThreadLocalRandom.current().nextInt(1990, 2024),
-                "parkingSpaceId", randomSpaceId()
-        ));
-    }
-
-    private JsonNode createPutCarBody() {
-        CarSpec carSpec = randomCarSpec();
-
-        return OBJECT_MAPPER.valueToTree(Map.of(
-                "color", carSpec.color(),
-                "licensePlate", randomLicensePlate()
-        ));
-    }
-
-    private JsonNode createPutSpaceClearCarBody() {
-        return OBJECT_MAPPER.valueToTree(Map.of(
-                "number", randomSpaceNumber(),
-                "clearCar", true
-        ));
-    }
-
-    private CarSpec randomCarSpec() {
-        String color = CAR_COLORS.get(ThreadLocalRandom.current().nextInt(CAR_COLORS.size()));
-        String make = CAR_MAKES.get(ThreadLocalRandom.current().nextInt(CAR_MAKES.size()));
-        List<String> models = CAR_MAKES_AND_MODELS.get(make);
-        String model = models.get(ThreadLocalRandom.current().nextInt(models.size()));
-
-        return new CarSpec(color, make, model);
-    }
-
-    private int randomSpaceId() {
-        return ThreadLocalRandom.current().nextInt(1, UPPER_SPACE_ID_RAND + 1);
-    }
-
-    private int randomCarId() {
-        return ThreadLocalRandom.current().nextInt(1, UPPER_CAR_ID_RAND + 1);
-    }
-
-    private String randomSpaceNumber() {
-        char letter = (char) ThreadLocalRandom.current().nextInt('A', 'Z' + 1);
-        int number = ThreadLocalRandom.current().nextInt(1, UPPER_SPACE_NUMBER_RAND + 1);
-
-        return "%c-%02d".formatted(letter, number);
-    }
-
-    private String randomLicensePlate() {
-        return "%s-%04d".formatted(randomLetters(3), ThreadLocalRandom.current().nextInt(1000, 10_000));
-    }
-
-    private String randomLetters(int length) {
-        StringBuilder builder = new StringBuilder();
-
-        for (int index = 0; index < length; index++) {
-            char letter = (char) ThreadLocalRandom.current().nextInt('A', 'Z' + 1);
-            builder.append(letter);
-        }
-
-        return builder.toString();
-    }
-
-    private void validate() {
-        if (baseUrl == null || baseUrl.isBlank()) {
-            throw new IllegalArgumentException("baseUrl is required.");
-        }
-
-        if (delayMillis < 0) {
-            throw new IllegalArgumentException("delayMillis must be >= 0.");
-        }
-
-        if (fixedGetIntervalMillis <= 0) {
-            throw new IllegalArgumentException("fixedGetIntervalMillis must be > 0.");
-        }
-
-        if (fixedGetUrls == null || fixedGetUrls.size() != 2) {
-            throw new IllegalArgumentException("Exactly two fixed GET URLs are required.");
-        }
-
-        for (String fixedGetUrl : fixedGetUrls) {
-            if (fixedGetUrl == null || fixedGetUrl.isBlank()) {
-                throw new IllegalArgumentException("Fixed GET URLs must be non-blank.");
+            if (update.carColors() != null) {
+                CAR_COLORS = List.copyOf(update.carColors());
             }
-        }
 
+            if (update.carMakesAndModels() != null) {
+                CAR_MAKES_AND_MODELS = copyCarMakesAndModels(update.carMakesAndModels());
+                CAR_MAKES = List.copyOf(CAR_MAKES_AND_MODELS.keySet());
+            }
 
-        if (requestTimeoutSeconds <= 0) {
-            throw new IllegalArgumentException("requestTimeoutSeconds must be > 0.");
-        }
+            if (update.upperSpaceIdRand() != null) {
+                upperSpaceIdRand = update.upperSpaceIdRand();
+            }
 
-        if (requests == null || requests.isEmpty()) {
-            throw new IllegalArgumentException("At least one request definition is required.");
-        }
+            if (update.upperCarIdRand() != null) {
+                upperCarIdRand = update.upperCarIdRand();
+            }
 
-        if (rabbitMq == null) {
-            throw new IllegalArgumentException("rabbitMq config is required.");
-        }
+            if (update.upperSpaceNumberRand() != null) {
+                upperSpaceNumberRand = update.upperSpaceNumberRand();
+            }
 
-        rabbitMq.validate();
+            if (update.requestWeightMap() != null) {
+                requestWeightMap = copyRequestWeightMap(update.requestWeightMap());
+            }
 
-        for (RequestDefinition request : requests) {
-            request.validate();
+            if (update.requestEnabledMap() != null) {
+                requestEnabledMap = copyRequestEnabledMap(update.requestEnabledMap());
+            }
+
+            if (update.delayMillis() != null) {
+                delayMillis = update.delayMillis();
+            }
+
+            if (update.requestTimeoutSeconds() != null) {
+                requestTimeoutSeconds = update.requestTimeoutSeconds();
+            }
+
+            if (!validate()) {
+                throw new IllegalArgumentException("Updated AppConfig is invalid.");
+            }
+        } catch (RuntimeException exception) {
+            CAR_COLORS = previousCarColors;
+            CAR_MAKES_AND_MODELS = previousCarMakesAndModels;
+            CAR_MAKES = previousCarMakes;
+            upperSpaceIdRand = previousUpperSpaceIdRand;
+            upperCarIdRand = previousUpperCarIdRand;
+            upperSpaceNumberRand = previousUpperSpaceNumberRand;
+            requestWeightMap = previousRequestWeightMap;
+            requestEnabledMap = previousRequestEnabledMap;
+            delayMillis = previousDelayMillis;
+            requestTimeoutSeconds = previousRequestTimeoutSeconds;
+            throw exception;
         }
     }
 
-    private record CarSpec(String color, String make, String model) {
+    private boolean validate() {
+        if (baseUrl == null || baseUrl.isBlank()) {
+            log.error("baseUrl is required.");
+            return false;
+        }
+
+        if (CAR_COLORS == null || CAR_COLORS.isEmpty()) {
+            log.error("At least one car color is required.");
+            return false;
+        }
+
+        if (CAR_MAKES_AND_MODELS == null || CAR_MAKES_AND_MODELS.isEmpty()) {
+            log.error("At least one car make and model mapping is required.");
+            return false;
+        }
+
+        if (CAR_MAKES == null || CAR_MAKES.isEmpty()) {
+            log.error("At least one car make is required.");
+            return false;
+        }
+
+        if (CAR_MAKES_AND_MODELS.values().stream().anyMatch(models -> models == null || models.isEmpty())) {
+            log.error("Each car make must have at least one model.");
+            return false;
+        }
+
+        if (upperSpaceIdRand <= 0 || upperCarIdRand <= 0 || upperSpaceNumberRand <= 0) {
+            log.error("upperSpaceIdRand, upperCarIdRand, and upperSpaceNumberRand must be greater than 0.");
+            return false;
+        }
+
+        if (delayMillis < 0 || delayMillis > 60_000) {
+            log.error("delayMillis must be >= 0 and <= 60,000.");
+            return false;
+        }
+
+        if (requestTimeoutSeconds <= 0 || requestTimeoutSeconds > 60) {
+            log.error("requestTimeoutSeconds must be > 0 and <= 60.");
+            return false;
+        }
+
+        if (requestWeightMap == null || requestWeightMap.isEmpty()) {
+            log.error("At least one request-weight mapping is required.");
+            return false;
+        }
+
+        if (requestEnabledMap == null || requestEnabledMap.isEmpty()) {
+            log.error("At least one request-enabled mapping is required.");
+            return false;
+        }
+
+        if (requestWeightMap.values().stream().anyMatch(weight -> weight == null || weight < 0)) {
+            log.error("Request weights must be >= 0.");
+            return false;
+        }
+
+        int totalWeight = getTotalWeight();
+        if (totalWeight <= 0) {
+            log.error("Total weight of all requests must be greater than 0");
+            return false;
+        }
+
+        boolean anyEnabled = getRequestEnabledMap().values().stream().anyMatch(Boolean::booleanValue);
+        if (!anyEnabled) {
+            log.error("At least one request must be enabled.");
+            return false;
+        }
+
+        return true;
+    }
+
+    public synchronized void validateOrThrow() {
+        if (!validate()) {
+            throw new IllegalStateException("AppConfig is invalid.");
+        }
+    }
+
+    public synchronized int getTotalWeight() {
+        return getRequestWeightMap().values().stream().mapToInt(Integer::intValue).sum();
+    }
+
+    private Map<String, List<String>> copyCarMakesAndModels(Map<String, List<String>> source) {
+        Map<String, List<String>> copy = new LinkedHashMap<>();
+
+        source.forEach((make, models) -> copy.put(make, List.copyOf(models)));
+
+        return copy;
+    }
+
+    private Map<GenerationRequests, Integer> copyRequestWeightMap(Map<String, Integer> source) {
+        Map<GenerationRequests, Integer> copy = new LinkedHashMap<>();
+
+        source.forEach((requestName, weight) -> copy.put(parseRequest(requestName), weight));
+
+        return copy;
+    }
+
+    private Map<GenerationRequests, Boolean> copyRequestEnabledMap(Map<String, Boolean> source) {
+        Map<GenerationRequests, Boolean> copy = new LinkedHashMap<>();
+
+        source.forEach((requestName, enabled) -> copy.put(parseRequest(requestName), enabled));
+
+        return copy;
+    }
+
+    private GenerationRequests parseRequest(String requestName) {
+        return GenerationRequests.valueOf(requestName);
     }
 }

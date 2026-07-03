@@ -1,26 +1,21 @@
 package com.eventspammer.config;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import lombok.Getter;
-import lombok.Setter;
+import lombok.Data;
 
-import java.util.HashMap;
 import java.util.Map;
 
-@Getter
-@Setter
+@Data
 public class RequestDefinition {
-
     private String name;
     private RequestMethod method;
     private String path;
-    private boolean enabled = true;
-    private int weight = 1;
-    private Map<String, String> headers = new HashMap<>();
+    private int weight;
     private JsonNode body;
+    private Map<String, String> headers;
 
     public void validate() {
-        if (name == null || name.isBlank()) {
+        if (name == null || name.trim().isEmpty()) {
             throw new IllegalArgumentException("Request name is required.");
         }
 
@@ -28,7 +23,7 @@ public class RequestDefinition {
             throw new IllegalArgumentException("Request method is required for request: " + name);
         }
 
-        if (path == null || path.isBlank()) {
+        if (path == null || path.trim().isEmpty()) {
             throw new IllegalArgumentException("Request path is required for request: " + name);
         }
 
@@ -41,3 +36,4 @@ public class RequestDefinition {
         }
     }
 }
+

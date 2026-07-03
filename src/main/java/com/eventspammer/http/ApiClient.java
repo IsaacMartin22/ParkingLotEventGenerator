@@ -15,7 +15,6 @@ import java.util.Map;
 
 public class ApiClient {
     private final AppConfig config;
-    private final HttpClient httpClient;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     private static final String CONTENT_TYPE_HEADER = "Content-Type";
@@ -25,12 +24,10 @@ public class ApiClient {
 
     public ApiClient(AppConfig config) {
         this.config = config;
-        this.httpClient = HttpClient.newBuilder()
-                .connectTimeout(Duration.ofSeconds(config.getRequestTimeoutSeconds()))
-                .build();
     }
 
     public ApiResponse send(RequestDefinition requestDefinition) throws Exception {
+        HttpClient httpClient = createHttpClient();
         URI uri = URI.create(config.getBaseUrl() + requestDefinition.getPath());
 
         HttpRequest.Builder requestBuilder = HttpRequest.newBuilder()
@@ -54,6 +51,7 @@ public class ApiClient {
     }
 
     public ApiResponse sendGet(String absoluteUrl) throws Exception {
+        HttpClient httpClient = createHttpClient();
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(absoluteUrl))
                 .timeout(Duration.ofSeconds(config.getRequestTimeoutSeconds()))
@@ -69,6 +67,12 @@ public class ApiClient {
                 response.body() == null ? "" : response.body(),
                 durationMillis
         );
+    }
+
+    private HttpClient createHttpClient() {
+        return HttpClient.newBuilder()
+                .connectTimeout(Duration.ofSeconds(config.getRequestTimeoutSeconds()))
+                .build();
     }
 
     private void applyHeaders(HttpRequest.Builder requestBuilder, RequestDefinition requestDefinition) {
@@ -97,7 +101,9 @@ public class ApiClient {
                 : objectMapper.writeValueAsString(requestDefinition.getBody());
 
         switch (requestDefinition.getMethod()) {
-            case GET -> requestBuilder.GET();
+            case POST -> requestBuilder.POST(HttpRequest.BodyPublishers.ofString(body));
+            case PUT -> requestBuilder.PUT(HttpRequest.BodyPublishers.ofString(body));
+            case PATCH -> requestBuilder.method("PATCH", HttpRequest.BodyPublishers.ofString(body));
             case DELETE -> {
                 if (body.isBlank()) {
                     requestBuilder.DELETE();
@@ -105,9 +111,7 @@ public class ApiClient {
                     requestBuilder.method("DELETE", HttpRequest.BodyPublishers.ofString(body));
                 }
             }
-            case POST -> requestBuilder.POST(HttpRequest.BodyPublishers.ofString(body));
-            case PUT -> requestBuilder.PUT(HttpRequest.BodyPublishers.ofString(body));
-            case PATCH -> requestBuilder.method("PATCH", HttpRequest.BodyPublishers.ofString(body));
+            case GET -> requestBuilder.GET();
         }
     }
 }

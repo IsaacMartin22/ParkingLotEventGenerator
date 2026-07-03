@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Parking Lot Event Generator</title>
+  <style>
+    :root {
+      --bg: #f2f6fb;
+      --panel: #ffffff;
+      --text: #111827;
+      --muted: #4b5563;
+      --border: #d6dfeb;
+      --header: #eef4fc;
+      --accent: #1d4ed8;
+      --get: #0f766e;
+      --post: #b45309;
+      --put: #7c3aed;
+      --danger: #b91c1c;
+      --success: #047857;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: radial-gradient(circle at top, #f8fbff, var(--bg));
+      color: var(--text);
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      line-height: 1.6;
+      padding: 2rem 1rem 3rem;
+    }
+
+    .container {
+      max-width: 1220px;
+      margin: 0 auto;
+    }
+
+    .hero,
+    .section {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      box-shadow: 0 10px 28px rgba(15, 23, 42, 0.06);
+    }
+
+    .hero {
+      padding: 1.4rem;
+      margin-bottom: 1rem;
+      background: linear-gradient(145deg, #ffffff, #edf4ff);
+    }
+
+    .hero-grid {
+      display: grid;
+      grid-template-columns: 1.5fr 1fr;
+      gap: 1rem;
+      align-items: start;
+    }
+
+    h1 {
+      margin: 0 0 0.45rem;
+      color: #0f172a;
+      font-size: 2rem;
+      line-height: 1.15;
+    }
+
+    h2 {
+      margin: 0 0 0.25rem;
+      font-size: 1.18rem;
+      color: #0f172a;
+    }
+
+    .intro {
+      margin: 0.35rem 0 0;
+      color: var(--muted);
+      max-width: 90ch;
+    }
+
+    .legend,
+    .badges,
+    .chip-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+
+    .legend {
+      margin-top: 1rem;
+    }
+
+    .badge,
+    .chip,
+    .method {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 999px;
+      padding: 0.14rem 0.65rem;
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+      color: #ffffff;
+      text-align: center;
+      box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.18);
+    }
+
+    .badge {
+      background: var(--accent);
+    }
+
+    .method.get,
+    .chip.get {
+      background: var(--get);
+    }
+
+    .method.post,
+    .chip.post {
+      background: var(--post);
+    }
+
+    .method.put,
+    .chip.put {
+      background: var(--put);
+    }
+
+    .panel {
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: #fbfdff;
+      padding: 1rem;
+    }
+
+    .panel-title {
+      margin: 0 0 0.55rem;
+      font-size: 0.95rem;
+      color: #0f172a;
+    }
+
+    .kv-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0.85rem;
+    }
+
+    .kv {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 0.85rem;
+      background: #ffffff;
+    }
+
+    .kv label {
+      display: block;
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 0.3rem;
+    }
+
+    .kv code,
+    .readonly-box,
+    .readonly-json {
+      display: block;
+      background: #f8fbff;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 0.7rem 0.8rem;
+      color: #0f172a;
+      word-break: break-word;
+      white-space: pre-wrap;
+      min-height: 2.6rem;
+    }
+
+    .readonly-json {
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 0.84rem;
+    }
+
+    .meta-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.8rem;
+      margin-top: 0.85rem;
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+
+    .meta-row strong {
+      color: #0f172a;
+    }
+
+    .section {
+      padding: 1rem;
+      margin-bottom: 1rem;
+    }
+
+    .section-note {
+      margin: 0 0 0.9rem;
+      color: var(--muted);
+      font-size: 0.94rem;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 0.9rem;
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+      margin-bottom: 0.85rem;
+    }
+
+    .field label {
+      font-size: 0.82rem;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .field input,
+    .field textarea {
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 0.72rem 0.8rem;
+      font: inherit;
+      color: var(--text);
+      background: #ffffff;
+      outline: none;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .field input:focus,
+    .field textarea:focus {
+      border-color: rgba(29, 78, 216, 0.45);
+      box-shadow: 0 0 0 3px rgba(29, 78, 216, 0.12);
+    }
+
+    .field input[readonly],
+    .field textarea[readonly] {
+      background: #f8fbff;
+      color: #334155;
+    }
+
+    .field textarea {
+      min-height: 140px;
+      resize: vertical;
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 0.9rem;
+      line-height: 1.45;
+    }
+
+    .button-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.65rem;
+      margin-top: 0.25rem;
+    }
+
+    button {
+      border: 0;
+      border-radius: 10px;
+      padding: 0.75rem 1rem;
+      font: inherit;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .primary {
+      background: var(--accent);
+      color: #ffffff;
+    }
+
+    .secondary {
+      background: #e8eef8;
+      color: #0f172a;
+    }
+
+    .ghost {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: #0f172a;
+    }
+
+    .status {
+      margin-top: 0.9rem;
+      border-radius: 12px;
+      padding: 0.8rem 0.9rem;
+      background: #f8fbff;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      min-height: 2.8rem;
+      white-space: pre-wrap;
+    }
+
+    .status.error {
+      border-color: rgba(185, 28, 28, 0.35);
+      color: var(--danger);
+      background: #fff5f5;
+    }
+
+    .status.success {
+      border-color: rgba(4, 120, 87, 0.35);
+      color: var(--success);
+      background: #f0fdf4;
+    }
+
+    .table-wrap {
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 760px;
+    }
+
+    th,
+    td {
+      border: 1px solid var(--border);
+      padding: 0.7rem 0.8rem;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      background: var(--header);
+      color: #0f172a;
+      font-weight: 700;
+    }
+
+    tr:nth-child(even) td {
+      background: #fbfdff;
+    }
+
+    .row-input,
+    .row-check {
+      width: 100%;
+      max-width: 180px;
+    }
+
+    .footer-note {
+      margin-top: 0.5rem;
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+
+    @media (max-width: 860px) {
+      body {
+        padding: 1rem 0.65rem 2rem;
+      }
+
+      .hero-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .kv-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .hero,
+      .section {
+        border-radius: 12px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="container">
+    <header class="hero">
+      <div class="hero-grid">
+        <div>
+          <h1>Parking Lot Event Generator</h1>
+          <p class="intro">
+            This page shows every value currently in <code>AppConfig</code>. You can edit the non-final
+            values below, save them, and the running generator will pick up the changes live on the next
+            iteration.
+          </p>
+          <p class="intro">
+            Read-only values such as <code>baseUrl</code> and <code>defaultHeaders</code> are displayed for
+            reference, while mutable settings like delay, request weights, enabled flags, and ID ranges can
+            be updated here.
+          </p>
+          <div class="legend" aria-label="HTTP method legend">
+            <span class="badge">Live config</span>
+            <span class="chip get">GET</span>
+            <span class="chip post">POST</span>
+            <span class="chip put">PUT</span>
+          </div>
+        </div>
+
+        <div class="panel">
+          <h2 class="panel-title">Current runtime summary</h2>
+          <div class="kv-grid">
+            <div class="kv">
+              <label>Base URL</label>
+              <code id="baseUrl"></code>
+            </div>
+            <div class="kv">
+              <label>Delay</label>
+              <code id="delaySummary"></code>
+            </div>
+            <div class="kv">
+              <label>Request timeout</label>
+              <code id="timeoutSummary"></code>
+            </div>
+            <div class="kv">
+              <label>Total weight</label>
+              <code id="totalWeightSummary"></code>
+            </div>
+          </div>
+          <div class="meta-row">
+            <div><strong>Last loaded:</strong> <span id="lastLoaded">Never</span></div>
+            <div><strong>Last saved:</strong> <span id="lastSaved">Never</span></div>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <section class="section">
+      <h2>Read-only AppConfig values</h2>
+      <p class="section-note">
+        These values are part of the config model but are either final or derived from other fields.
+      </p>
+      <div class="grid">
+        <div class="panel">
+          <h3 class="panel-title">Default headers</h3>
+          <div class="readonly-json" id="defaultHeaders"></div>
+        </div>
+        <div class="panel">
+          <h3 class="panel-title">Derived car makes</h3>
+          <div class="chip-list" id="carMakes"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>Edit live values</h2>
+      <p class="section-note">
+        Change any of the mutable AppConfig values below and click <strong>Save changes</strong>.
+      </p>
+      <div class="grid">
+        <div class="panel">
+          <h3 class="panel-title">General settings</h3>
+          <div class="field">
+            <label for="baseUrlReadonly">Base URL</label>
+            <input id="baseUrlReadonly" type="text" readonly />
+          </div>
+          <div class="field">
+            <label for="delayMillis">delayMillis</label>
+            <input id="delayMillis" type="number" min="0" step="1" />
+          </div>
+          <div class="field">
+            <label for="requestTimeoutSeconds">requestTimeoutSeconds</label>
+            <input id="requestTimeoutSeconds" type="number" min="1" step="1" />
+          </div>
+          <div class="field">
+            <label for="upperSpaceIdRand">upperSpaceIdRand</label>
+            <input id="upperSpaceIdRand" type="number" min="1" step="1" />
+          </div>
+          <div class="field">
+            <label for="upperCarIdRand">upperCarIdRand</label>
+            <input id="upperCarIdRand" type="number" min="1" step="1" />
+          </div>
+          <div class="field">
+            <label for="upperSpaceNumberRand">upperSpaceNumberRand</label>
+            <input id="upperSpaceNumberRand" type="number" min="1" step="1" />
+          </div>
+        </div>
+
+        <div class="panel">
+          <h3 class="panel-title">Car catalog</h3>
+          <div class="field">
+            <label for="carColors">CAR_COLORS</label>
+            <textarea id="carColors" spellcheck="false"></textarea>
+          </div>
+          <div class="field">
+            <label for="carMakesAndModels">CAR_MAKES_AND_MODELS</label>
+            <textarea id="carMakesAndModels" spellcheck="false"></textarea>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel" style="margin-top: 0.9rem;">
+        <h3 class="panel-title">Request weights and enabled flags</h3>
+        <p class="section-note">These values drive which event type is chosen while the generator is running.</p>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Request</th>
+                <th>Weight</th>
+                <th>Enabled</th>
+              </tr>
+            </thead>
+            <tbody id="requestRows"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="button-row">
+        <button class="primary" id="saveButton" type="button">Save changes</button>
+        <button class="secondary" id="reloadButton" type="button">Reload from server</button>
+        <button class="ghost" id="resetButton" type="button">Reset form to loaded values</button>
+      </div>
+
+      <div class="status" id="status">Loading config...</div>
+      <div class="footer-note">
+        The generator reads the shared in-memory config, so updated delay, timeout, weight, and enabled values take effect immediately.
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const state = {
+      config: null,
+    };
+
+    const elements = {
+      baseUrl: document.getElementById('baseUrl'),
+      baseUrlReadonly: document.getElementById('baseUrlReadonly'),
+      defaultHeaders: document.getElementById('defaultHeaders'),
+      carMakes: document.getElementById('carMakes'),
+      delayMillis: document.getElementById('delayMillis'),
+      requestTimeoutSeconds: document.getElementById('requestTimeoutSeconds'),
+      upperSpaceIdRand: document.getElementById('upperSpaceIdRand'),
+      upperCarIdRand: document.getElementById('upperCarIdRand'),
+      upperSpaceNumberRand: document.getElementById('upperSpaceNumberRand'),
+      carColors: document.getElementById('carColors'),
+      carMakesAndModels: document.getElementById('carMakesAndModels'),
+      requestRows: document.getElementById('requestRows'),
+      delaySummary: document.getElementById('delaySummary'),
+      timeoutSummary: document.getElementById('timeoutSummary'),
+      totalWeightSummary: document.getElementById('totalWeightSummary'),
+      lastLoaded: document.getElementById('lastLoaded'),
+      lastSaved: document.getElementById('lastSaved'),
+      status: document.getElementById('status'),
+      saveButton: document.getElementById('saveButton'),
+      reloadButton: document.getElementById('reloadButton'),
+      resetButton: document.getElementById('resetButton'),
+    };
+
+    const safeJson = (value, fallback = {}) => {
+      if (value === null || value === undefined || value === '') {
+        return fallback;
+      }
+
+      try {
+        return JSON.parse(value);
+      } catch (error) {
+        throw new Error(`Invalid JSON: ${error.message}`);
+      }
+    };
+
+    const prettyJson = (value) => JSON.stringify(value ?? {}, null, 2);
+
+    const toLines = (value) => {
+      if (!Array.isArray(value)) {
+        return '';
+      }
+
+      return value.join('\n');
+    };
+
+    const fromLines = (value) => value
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0);
+
+    const requestKeys = (config) => {
+      const keys = new Set([
+        ...Object.keys(config.requestWeightMap ?? {}),
+        ...Object.keys(config.requestEnabledMap ?? {}),
+      ]);
+
+      return Array.from(keys).sort();
+    };
+
+    const setStatus = (message, type = '') => {
+      elements.status.textContent = message;
+      elements.status.className = `status ${type}`.trim();
+    };
+
+    const renderChips = (container, items, className = '') => {
+      container.innerHTML = '';
+
+      if (!items || items.length === 0) {
+        const empty = document.createElement('span');
+        empty.className = 'readonly-box';
+        empty.textContent = 'No values';
+        container.appendChild(empty);
+        return;
+      }
+
+      items.forEach((item) => {
+        const chip = document.createElement('span');
+        chip.className = `chip ${className}`.trim();
+        chip.textContent = item;
+        container.appendChild(chip);
+      });
+    };
+
+    const renderRequestRows = (config) => {
+      const keys = requestKeys(config);
+      elements.requestRows.innerHTML = '';
+
+      keys.forEach((key) => {
+        const row = document.createElement('tr');
+
+        const nameCell = document.createElement('td');
+        nameCell.textContent = key;
+
+        const weightCell = document.createElement('td');
+        const weightInput = document.createElement('input');
+        weightInput.type = 'number';
+        weightInput.min = '0';
+        weightInput.step = '1';
+        weightInput.className = 'row-input';
+        weightInput.dataset.requestKey = key;
+        weightInput.dataset.field = 'weight';
+        weightInput.value = config.requestWeightMap?.[key] ?? 0;
+        weightCell.appendChild(weightInput);
+
+        const enabledCell = document.createElement('td');
+        const enabledInput = document.createElement('input');
+        enabledInput.type = 'checkbox';
+        enabledInput.className = 'row-check';
+        enabledInput.dataset.requestKey = key;
+        enabledInput.dataset.field = 'enabled';
+        enabledInput.checked = Boolean(config.requestEnabledMap?.[key]);
+        enabledCell.appendChild(enabledInput);
+
+        row.appendChild(nameCell);
+        row.appendChild(weightCell);
+        row.appendChild(enabledCell);
+        elements.requestRows.appendChild(row);
+      });
+    };
+
+    const renderConfig = (config) => {
+      state.config = config;
+
+      elements.baseUrl.textContent = config.baseUrl ?? '';
+      elements.baseUrlReadonly.value = config.baseUrl ?? '';
+      elements.defaultHeaders.textContent = prettyJson(config.defaultHeaders);
+      elements.delaySummary.textContent = `${config.delayMillis} ms`;
+      elements.timeoutSummary.textContent = `${config.requestTimeoutSeconds} second(s)`;
+      elements.totalWeightSummary.textContent = String(config.totalWeight ?? 0);
+      elements.lastLoaded.textContent = new Date().toLocaleString();
+
+      elements.delayMillis.value = config.delayMillis ?? 0;
+      elements.requestTimeoutSeconds.value = config.requestTimeoutSeconds ?? 0;
+      elements.upperSpaceIdRand.value = config.upperSpaceIdRand ?? 0;
+      elements.upperCarIdRand.value = config.upperCarIdRand ?? 0;
+      elements.upperSpaceNumberRand.value = config.upperSpaceNumberRand ?? 0;
+      elements.carColors.value = toLines(config.carColors);
+      elements.carMakesAndModels.value = prettyJson(config.carMakesAndModels);
+
+      renderChips(elements.carMakes, config.carMakes ?? []);
+      renderRequestRows(config);
+    };
+
+    const collectUpdatePayload = () => {
+      const carMakesAndModels = safeJson(elements.carMakesAndModels.value, {});
+      const requestWeightMap = {};
+      const requestEnabledMap = {};
+
+      elements.requestRows.querySelectorAll('input[data-request-key][data-field="weight"]').forEach((input) => {
+        requestWeightMap[input.dataset.requestKey] = Number(input.value);
+      });
+
+      elements.requestRows.querySelectorAll('input[data-request-key][data-field="enabled"]').forEach((input) => {
+        requestEnabledMap[input.dataset.requestKey] = input.checked;
+      });
+
+      return {
+        carColors: fromLines(elements.carColors.value),
+        carMakesAndModels,
+        upperSpaceIdRand: Number(elements.upperSpaceIdRand.value),
+        upperCarIdRand: Number(elements.upperCarIdRand.value),
+        upperSpaceNumberRand: Number(elements.upperSpaceNumberRand.value),
+        requestWeightMap,
+        requestEnabledMap,
+        delayMillis: Number(elements.delayMillis.value),
+        requestTimeoutSeconds: Number(elements.requestTimeoutSeconds.value),
+      };
+    };
+
+    const loadConfig = async () => {
+      try {
+        setStatus('Loading config...');
+        const response = await fetch('/api/config', { cache: 'no-store' });
+        if (!response.ok) {
+          throw new Error(`Failed to load config (${response.status})`);
+        }
+
+        const config = await response.json();
+        renderConfig(config);
+        setStatus('Config loaded successfully.', 'success');
+      } catch (error) {
+        setStatus(error.message, 'error');
+      }
+    };
+
+    const saveConfig = async () => {
+      try {
+        setStatus('Saving changes...');
+        const payload = collectUpdatePayload();
+        const response = await fetch('/api/config', {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(payload),
+        });
+
+        const responseBody = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          throw new Error(responseBody.error || `Failed to save config (${response.status})`);
+        }
+
+        renderConfig(responseBody);
+        elements.lastSaved.textContent = new Date().toLocaleString();
+        setStatus('Config saved. The generator will use the updated values immediately.', 'success');
+      } catch (error) {
+        setStatus(error.message, 'error');
+      }
+    };
+
+    const resetForm = () => {
+      if (state.config) {
+        renderConfig(state.config);
+        setStatus('Form reset to the last loaded values.', 'success');
+      }
+    };
+
+    elements.saveButton.addEventListener('click', saveConfig);
+    elements.reloadButton.addEventListener('click', loadConfig);
+    elements.resetButton.addEventListener('click', resetForm);
+
+    loadConfig();
+    setInterval(loadConfig, 10000);
+  </script>
+</body>
+</html>

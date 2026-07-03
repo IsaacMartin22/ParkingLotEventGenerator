@@ -22,7 +22,7 @@
         <dependency>
             <groupId>io.github.isaacmartin22</groupId>
             <artifactId>parking-lot-api-sdk</artifactId>
-            <version>0.0.4</version>
+            <version>0.0.5</version>
         </dependency>
 
         <dependency>
@@ -90,7 +90,7 @@
                             <createDependencyReducedPom>false</createDependencyReducedPom>
                             <transformers>
                                 <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
-                                    <mainClass>com.eventspammer.EventSpammerApplication</mainClass>
+                                    <mainClass>com.eventspammer.EventGeneratorApplication</mainClass>
                                 </transformer>
                             </transformers>
                         </configuration>
