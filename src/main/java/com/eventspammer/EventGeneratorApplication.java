@@ -1,37 +1,33 @@
 package com.eventspammer;
 
-import com.eventspammer.config.AppConfig;
-import com.eventspammer.core.EventGenerator;
-import com.eventspammer.http.ConfigWebServer;
+import com.example.parkinglot.common.request.ParkingSpaceUpdateRequest;
 import com.example.parkinglot.sdk.ParkingLotApiClient;
 
 public class EventGeneratorApplication {
 
+
     public static void main(String[] args) {
         try {
             ParkingLotApiClient client = new ParkingLotApiClient();
-            AppConfig config = new AppConfig();
 
-            try (ConfigWebServer webServer = new ConfigWebServer(config)) {
-                webServer.start();
+            System.out.println("EventGenerator starting...");
+            for (int i = 360; i < 360 + 60; i++) {
+                System.out.println("EventGenerator sending request for space number " + (i+1));
+                ParkingSpaceUpdateRequest parkingSpaceUpdateRequest = new ParkingSpaceUpdateRequest();
+                parkingSpaceUpdateRequest.setColor("Green");
+                parkingSpaceUpdateRequest.setMake("Toyota");
+                parkingSpaceUpdateRequest.setModel("Camry");
+                parkingSpaceUpdateRequest.setManufacturingYear(2000);
+                parkingSpaceUpdateRequest.setLicensePlate("ABC-123");
 
-                EventGenerator generator = new EventGenerator(config, client);
-
-                Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-                    System.out.println();
-                    System.out.println("Shutdown requested. Stopping EventSpammer...");
-                    generator.stop();
-                }));
-
-                 generator.start();
-
-                System.out.println("EventSpammer started. Press Ctrl+C to stop.");
+                try {
+                    client.updateParkingSpace(i, parkingSpaceUpdateRequest);
+                } catch (Exception e) {
+                    System.err.println("Failed to update parking space " + (i+1) + ": " + e.getMessage());
+                }
             }
-            catch (Exception exception) {
-                System.err.println("Failed to start EventSpammer.");
-                exception.printStackTrace();
-                System.exit(1);
-            }
+
+            System.out.println("EventGenerator finished");
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
