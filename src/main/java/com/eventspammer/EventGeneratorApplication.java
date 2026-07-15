@@ -1,7 +1,7 @@
 package com.eventspammer;
 
-import com.example.parkinglot.common.request.ParkingSpaceUpdateRequest;
 import com.example.parkinglot.sdk.ParkingLotApiClient;
+import parkinglot.common.request.ParkingSpaceUpdateRequest;
 
 public class EventGeneratorApplication {
 
